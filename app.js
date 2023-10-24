@@ -4,7 +4,8 @@ const express=require("express");
 const bodyParser=require("body-parser");
 const ejs=require("ejs");
 const mongoose=require("mongoose");
-const md5=require("md5");//a hash function which is used in order there is no possibility of decrypting the password
+const bcrypt=require("bcrypt");
+const saltRounds=10;
 mongoose.connect("mongodb://127.0.0.1:27017/usersDB");
 const app=express();
 const port=3000;
@@ -29,27 +30,33 @@ app.get("/register",(req,res)=>{
     res.render("register");
 });
 app.post("/register",(req,res)=>{
-    const newuser=new User({
-        email:req.body.username,
-        password:md5(req.body.password)
-    });
-    newuser.save().then((result)=>{
-        console.log("Registered successfully");
-        res.render("secrets");
+    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+        // Store hash in your password DB.
+        const newuser=new User({
+            email:req.body.username,
+            password:hash
+        });
+        newuser.save().then((result)=>{
+            console.log("Registered successfully");
+            res.render("secrets");
+        });
     });
 });
 app.post("/login",(req,res)=>{
     const username=req.body.username;
-    const pass=md5(req.body.password);
+    const pass=req.body.password;
     User.findOne({email:username}).then((result)=>{
-        if(result.password==pass){
-            console.log("logged in successfully");
-            res.render("secrets")
-        }
-        else{
-            console.log("incorrect password");
-            res.render("login");
-        }
+        bcrypt.compare(pass,result.password, function(err, result) {
+            // result == true
+            if(result==true){
+                console.log("logged in successfully");
+                res.render("secrets")  
+            }
+            else{
+                console.log("incorrect password");
+                res.render("login");
+            }
+        });
     })
 })
 app.listen(port,()=>{
