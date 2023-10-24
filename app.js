@@ -4,18 +4,15 @@ const express=require("express");
 const bodyParser=require("body-parser");
 const ejs=require("ejs");
 const mongoose=require("mongoose");
-const encrypt=require("mongoose-encryption");
+const md5=require("md5");//a hash function which is used in order there is no possibility of decrypting the password
 mongoose.connect("mongodb://127.0.0.1:27017/usersDB");
-console.log(process.env.API_KEY);
 const app=express();
 const port=3000;
 const userSchema=new mongoose.Schema({
     email:String,
     password:String
 });
-const secret=process.env.SECRET;
-userSchema.plugin(encrypt,{secret:secret,encryptedFields : ["password"]});//plugins are used for allowing pre-packaged capabilities to extend their functionality.In this case our userSchema is having encryption power
-//mongoose will encrypt when we use save() and decrypts when we use find()
+
 const User=mongoose.model("User",userSchema);
 app.use(express.static("public"));
 app.set('view engine','ejs');
@@ -34,7 +31,7 @@ app.get("/register",(req,res)=>{
 app.post("/register",(req,res)=>{
     const newuser=new User({
         email:req.body.username,
-        password:req.body.password
+        password:md5(req.body.password)
     });
     newuser.save().then((result)=>{
         console.log("Registered successfully");
@@ -43,7 +40,7 @@ app.post("/register",(req,res)=>{
 });
 app.post("/login",(req,res)=>{
     const username=req.body.username;
-    const pass=req.body.password;
+    const pass=md5(req.body.password);
     User.findOne({email:username}).then((result)=>{
         if(result.password==pass){
             console.log("logged in successfully");
